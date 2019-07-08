@@ -1,10 +1,10 @@
 #!/bin/bash
 ## -----------------------------------------------------------------------------
 ## Linux Scripts.
-## Start, stop or disable a list of services.
+## Creates an apache user/group and a home directory in /var/www.
 ##
-## @package ojullien\bash\bin\manageservices
-## @license MIT <https://github.com/ojullien/bash-manageservices/blob/master/LICENSE>
+## @package ojullien\bash\bin
+## @license MIT <https://github.com/ojullien/bash-createdomain/blob/master/LICENSE>
 ## -----------------------------------------------------------------------------
 #set -o errexit
 set -o nounset
@@ -36,14 +36,17 @@ readonly m_DIR_REALPATH="$(realpath "$(dirname "$0")")"
 . "${m_DIR_SYS}/config.sh"
 # shellcheck source=/dev/null
 . "${m_DIR_SYS}/service.sh"
-Config::load "manageservices"
 # shellcheck source=/dev/null
-. "${m_DIR_APP}/manageservices/app.sh"
+. "${m_DIR_APP}/clean/app.sh"
+Config::load "createdomain"
+# shellcheck source=/dev/null
+. "${m_DIR_APP}/createdomain/app.sh"
 
 ## -----------------------------------------------------------------------------
 ## Help
 ## -----------------------------------------------------------------------------
-((m_OPTION_SHOWHELP)) && ManageServices::showHelp && exit 0
+((m_OPTION_SHOWHELP)) && CreateDomain::showHelp && exit 0
+(( 0==$# )) && CreateDomain::showHelp && exit 1
 
 ## -----------------------------------------------------------------------------
 ## Start
@@ -53,52 +56,38 @@ String::notice "Today is: $(date -R)"
 String::notice "The PID for $(basename "$0") process is: $$"
 Console::waitUser
 
-## -----------------------------------------------------------------------------
+## -----------------------------------------------------
 ## Parse the app options and arguments
-## -----------------------------------------------------------------------------
-declare -i iReturn=1
+## -----------------------------------------------------
+declare -i iReturn
 
-if (( "$#" )); then
+while (( "$#" )); do
     case "$1" in
-    stop)
-        String::separateLine
-        Service::stopServices ${m_SERVICES_STOP}
-        iReturn=$?
-        ;;
-    start)
-        String::separateLine
-        Service::startServices ${m_SERVICES_START}
-        iReturn=$?
-        ;;
-    disable)
-        String::separateLine
-        Service::disableServices ${m_SERVICES_DISABLE}
-        iReturn=$?
-        ;;
     -t|--trace)
         shift
         String::separateLine
         Constant::trace
-        ManageServices::trace
+        CreateDomain::trace
         ;;
     --*|-*) # unknown option
         shift
         String::separateLine
-        SaveSite::showHelp
+        CreateDomain::showHelp
         exit 0
         ;;
-    *) # unknown option
+    *) # We presume its a domain name
         String::separateLine
-        ManageServices::showHelp
+        CreateDomain::create "$1"
+        iReturn=$?
+        ((0!=iReturn)) && exit ${iReturn}
+        shift
+        Console::waitUser
         ;;
     esac
-else
-        String::separateLine
-        ManageServices::showHelp
-fi
+done
 
 ## -----------------------------------------------------------------------------
 ## END
 ## -----------------------------------------------------------------------------
 String::notice "Now is: $(date -R)"
-exit ${iReturn}
+exit 0
